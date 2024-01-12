@@ -4,6 +4,7 @@ const JWT = require("jsonwebtoken");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const mongoose = require("mongoose");
+const expFileUpload = require("express-fileupload");
 
 const app = express();
 const port = 3000;
@@ -20,6 +21,7 @@ const User = require("./dbmodels/UserModel");
 
 dotenv.config();
 app.use(express.json());
+app.use(expFileUpload());
 app.use(cors(corsOptions));
 
 const connection_url = process.env.MONGODB_URL;
@@ -34,10 +36,6 @@ async function connectDb() {
 }
 
 connectDb();
-
-app.get("/", (req, res) => {
-  res.status(200).send("welcome to video file");
-});
 
 //Middleware - Handling user credentials
 
@@ -145,6 +143,19 @@ app.post("/login", async (req, res) => {
     res.status(500);
     res.json({ message: "Internal server error", err: error });
   }
+});
+
+//upload-video
+
+app.post("/upload", async (req, res) => {
+  const videoFile = req.files.video;
+  const videoBuffer = videoFile.data;
+  console.log(videoBuffer);
+  // console.log(req.files);
+  // console.log(req.files.video);
+  res
+    .status(200)
+    .json({ message: "File received successfully", body: "summa" });
 });
 
 app.listen(port, () => {
