@@ -5,6 +5,7 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const expFileUpload = require("express-fileupload");
+const cloudinary = require("cloudinary").v2;
 
 const app = express();
 const port = 3000;
@@ -15,16 +16,25 @@ const corsOptions = {
   optionsSuccessStatus: 200,
 };
 
-// db_models
-
-const User = require("./dbmodels/UserModel");
-
 dotenv.config();
 app.use(express.json());
 app.use(expFileUpload());
 app.use(cors(corsOptions));
 
+//configuring cloudinary
+
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.API_KEY,
+  api_secret: process.env.API_SECRET,
+  secure: true,
+});
+
+// db_models
 const connection_url = process.env.MONGODB_URL;
+
+const User = require("./dbmodels/UserModel");
+const Video = require("./dbmodels/VideoModel");
 
 async function connectDb() {
   try {
@@ -147,15 +157,78 @@ app.post("/login", async (req, res) => {
 
 //upload-video
 
-app.post("/upload", async (req, res) => {
-  const videoFile = req.files.video;
-  const videoBuffer = videoFile.data;
-  console.log(videoBuffer);
-  // console.log(req.files);
-  // console.log(req.files.video);
-  res
-    .status(200)
-    .json({ message: "File received successfully", body: "summa" });
+app.post("/upload/:id", async (req, res) => {
+  const userId = req.params.id;
+  console.log(userId);
+  try {
+    if (!req.files || Object.keys(req.files).length === 0) {
+      return res.status(400).json({ error: "No files were uploaded." });
+    } else {
+      const videoFile = req.files.video;
+      const videoBuffer = videoFile.data;
+      // res.status(200).json({ message: "Paru", data: videoBuffer });
+
+      const saveFileToDb = async (url) => {
+        const newVideo = new Video({
+          videoName: videoFile.name,
+          videoUrl: url,
+          userId: userId,
+        });
+        try {
+          const savedFile = await newVideo.save();
+          const videoId = savedFile._id;
+          const user = await User.findById({ _id: userId });
+
+          if (user) {
+            user.myVideos.push(videoId);
+            await user.save();
+            return true;
+          }
+          return false;
+        } catch (error) {
+          return res.status(500).json({ message: "Db error", error });
+        }
+
+        // console.log(savedFile);
+      };
+
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          resource_type: "video",
+          chunk_size: 6000000,
+          timeout: 600000,
+        },
+        (error, result) => {
+          if (error) {
+            return res
+              .status(500)
+              .json({ message: "Upload cloudinary fails", error: error });
+          } else {
+            const publicUrl = result.secure_url;
+            const isSaved = saveFileToDb(publicUrl);
+            if (isSaved) {
+              return res.status(201).json({
+                message: "Video uploaded successfully",
+                data: {
+                  name: videoFile.name,
+                  type: videoFile.type,
+                  secure_url: publicUrl,
+                },
+              });
+            } else {
+              res.status(500).json({ message: "Video upload error" });
+            }
+          }
+        }
+      );
+
+      stream.write(videoBuffer);
+      stream.end();
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server side issue", error });
+  }
 });
 
 app.listen(port, () => {

@@ -16,6 +16,10 @@ const UserSchema = new Schema(
       min: 6,
       max: 16,
     },
+    myVideos: {
+      type: Array,
+      default: [],
+    },
   },
   {
     timestamps: true,
