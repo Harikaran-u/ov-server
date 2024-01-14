@@ -39,3 +39,15 @@ Published Base Url - https://online-video-server.onrender.com
 3. Upload Video - https://online-video-server.onrender.com/upload/
 4. Upload Subtitle - https://online-video-server.onrender.com/upload/videoId
    1. VideoId is path parameter
+**Usage**
+1. You can clone repositary and install npm packages
+2. You should use your .env file
+3. .env file should include followings
+   1. mongo_db_url
+   2. cloudinary_api
+   3. cloudinary_key
+   4. cloudinary_access_token
+4. Note - Change .env based on your Db and Cloud storage
+
+Thanks & Regards
+   U.Harikaran
