@@ -5,6 +5,7 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const expFileUpload = require("express-fileupload");
+const fs = require("fs");
 const cloudinary = require("cloudinary").v2;
 
 const app = express();
@@ -249,11 +250,9 @@ app.post("/subtitles/:videoId", async (req, res) => {
 
   const convertToSrt = (subtitles) => {
     let srtContent = "";
-    let counter = 1;
 
     subtitles.forEach((subtitle) => {
-      srtContent += `${counter}\n${subtitle.start} --> ${subtitle.end}\n${subtitle.text}\n\n`;
-      counter++;
+      srtContent += `${subtitle.start} --> ${subtitle.end}\n>> ${subtitle.text}\n\n`;
     });
 
     return srtContent;
@@ -264,17 +263,36 @@ app.post("/subtitles/:videoId", async (req, res) => {
     if (!video) {
       res.status(404).json({ message: "Video not found" });
     } else {
-      video.subtitles = subtitlesArray;
-      await video.save();
       const srtContent = convertToSrt(subtitlesArray);
-      res.status(201).json({
-        message: "Subtitles saved successfully",
-        srtFile: srtContent,
-      });
-      console.log("SRT Content:\n", srtContent);
-      console.log("Subtitles saved to MongoDB");
+
+      const webVTTContent = `WEBVTT
+  
+  ${srtContent}`;
+
+      fs.writeFileSync("subtitle.vtt", webVTTContent);
+
+      cloudinary.uploader.upload(
+        "subtitle.vtt",
+        { resource_type: "raw" },
+        async (error, result) => {
+          if (error) {
+            return res
+              .status(500)
+              .json({ error: "Error uploading to Cloudinary" });
+          } else {
+            fs.unlinkSync("subtitle.vtt");
+            video.subtitles.push(result.secure_url);
+            await video.save();
+            res.status(201).json({
+              vttUrl: result.secure_url,
+              message: "Subtitles saved successfully",
+            });
+          }
+        }
+      );
     }
   } catch (error) {
+    console.log(error);
     res.status(500).json({ message: "Server side error", error });
   }
 });

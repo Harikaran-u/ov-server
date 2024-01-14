@@ -14,7 +14,7 @@ const newVideo = new Schema(
       required: true,
     },
     subtitles: {
-      type: [{ start: String, end: String, text: String }],
+      type: Array,
       default: [],
     },
     userId: {
