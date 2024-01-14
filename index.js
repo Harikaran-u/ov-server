@@ -299,38 +299,6 @@ app.post("/subtitles/:videoId", async (req, res) => {
 
 //get subtitles
 
-app.get("/subtitles/:videoId", async (req, res) => {
-  const videoId = req.params.videoId;
-  try {
-    const videoData = await Video.findById({ _id: videoId });
-    const subtitlesArray = videoData.subtitles;
-    const subLength = subtitles.length;
-
-    if (subLength !== 0) {
-      const convertToSrt = (subtitles) => {
-        let srtContent = "";
-        let counter = 1;
-
-        subtitles.forEach((subtitle) => {
-          srtContent += `${counter}\n${subtitle.start} --> ${subtitle.end}\n${subtitle.text}\n\n`;
-          counter++;
-        });
-
-        return srtContent;
-      };
-
-      const srtContent = convertToSrt(subtitlesArray);
-      res.status(200).json({
-        message: "Subtitles Data is available",
-        subtitlesArray,
-        srtContent,
-      });
-    }
-  } catch (error) {
-    res.status(500).json({ message: "Server side issue", error });
-  }
-});
-
 app.listen(port, () => {
   console.log(`listening to port ${port}`);
 });
