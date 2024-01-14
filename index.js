@@ -13,7 +13,7 @@ const port = 3000;
 const secretTokenKey = "My_Secret_Token";
 
 const corsOptions = {
-  origin: "http://localhost:5173",
+  origin: "https://ovplayerhk.netlify.app",
   optionsSuccessStatus: 200,
 };
 
