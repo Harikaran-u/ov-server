@@ -30,6 +30,7 @@
 **API URL BASE & ENDPOINTS**
 ---
 Published Base Url - https://online-video-server.onrender.com
+Published Front End Url - https://ovplayerhk.netlify.app/
 ---
 **End Points**
 1. Register - https://online-video-server.onrender.com/register
