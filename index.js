@@ -157,16 +157,16 @@ app.post("/login", async (req, res) => {
 
 //upload-video
 
-app.post("/upload/:id", async (req, res) => {
-  const userId = req.params.id;
-  console.log(userId);
+app.post("/upload/:userId", async (req, res) => {
+  const userId = req.params.userId;
+  let videoId;
+  // console.log(userId);
   try {
     if (!req.files || Object.keys(req.files).length === 0) {
       return res.status(400).json({ error: "No files were uploaded." });
     } else {
       const videoFile = req.files.video;
       const videoBuffer = videoFile.data;
-      // res.status(200).json({ message: "Paru", data: videoBuffer });
 
       const saveFileToDb = async (url) => {
         const newVideo = new Video({
@@ -174,20 +174,17 @@ app.post("/upload/:id", async (req, res) => {
           videoUrl: url,
           userId: userId,
         });
-        try {
-          const savedFile = await newVideo.save();
-          const videoId = savedFile._id;
-          const user = await User.findById({ _id: userId });
 
-          if (user) {
-            user.myVideos.push(videoId);
-            await user.save();
-            return true;
-          }
-          return false;
-        } catch (error) {
-          return res.status(500).json({ message: "Db error", error });
+        const savedFile = await newVideo.save();
+        videoId = savedFile._id;
+        const user = await User.findById({ _id: userId });
+
+        if (user) {
+          user.myVideos.push(videoId);
+          await user.save();
+          return videoId;
         }
+        return false;
 
         // console.log(savedFile);
       };
@@ -205,19 +202,24 @@ app.post("/upload/:id", async (req, res) => {
               .json({ message: "Upload cloudinary fails", error: error });
           } else {
             const publicUrl = result.secure_url;
-            const isSaved = saveFileToDb(publicUrl);
-            if (isSaved) {
-              return res.status(201).json({
-                message: "Video uploaded successfully",
-                data: {
-                  name: videoFile.name,
-                  type: videoFile.type,
-                  secure_url: publicUrl,
-                },
-              });
-            } else {
-              res.status(500).json({ message: "Video upload error" });
-            }
+
+            const getVideoIdAndSendData = async () => {
+              const isVideoId = await saveFileToDb(publicUrl);
+              if (isVideoId) {
+                return res.status(201).json({
+                  message: "Video uploaded successfully",
+                  data: {
+                    name: videoFile.name,
+                    secure_url: publicUrl,
+                    videoId: isVideoId,
+                  },
+                });
+              } else {
+                res.status(500).json({ message: "Video upload error" });
+              }
+              console.log(result);
+            };
+            getVideoIdAndSendData();
           }
         }
       );
@@ -227,6 +229,86 @@ app.post("/upload/:id", async (req, res) => {
     }
   } catch (error) {
     console.log(error);
+    res.status(500).json({ message: "Server side issue", error });
+  }
+});
+
+//upload-subtitle
+
+app.post("/subtitles/:videoId", async (req, res) => {
+  const subtitlesArray = req.body.subtitlesArray;
+  const videoId = req.params.videoId;
+
+  const subLen = subtitlesArray.length;
+
+  if (subLen === 0) {
+    res.status(404).json({ message: "Please provide subtitles" });
+  }
+
+  // Save subtitles to MongoDB
+
+  const convertToSrt = (subtitles) => {
+    let srtContent = "";
+    let counter = 1;
+
+    subtitles.forEach((subtitle) => {
+      srtContent += `${counter}\n${subtitle.start} --> ${subtitle.end}\n${subtitle.text}\n\n`;
+      counter++;
+    });
+
+    return srtContent;
+  };
+
+  try {
+    const video = await Video.findById({ _id: videoId });
+    if (!video) {
+      res.status(404).json({ message: "Video not found" });
+    } else {
+      video.subtitles = subtitlesArray;
+      await video.save();
+      const srtContent = convertToSrt(subtitlesArray);
+      res.status(201).json({
+        message: "Subtitles saved successfully",
+        srtFile: srtContent,
+      });
+      console.log("SRT Content:\n", srtContent);
+      console.log("Subtitles saved to MongoDB");
+    }
+  } catch (error) {
+    res.status(500).json({ message: "Server side error", error });
+  }
+});
+
+//get subtitles
+
+app.get("/subtitles/:videoId", async (req, res) => {
+  const videoId = req.params.videoId;
+  try {
+    const videoData = await Video.findById({ _id: videoId });
+    const subtitlesArray = videoData.subtitles;
+    const subLength = subtitles.length;
+
+    if (subLength !== 0) {
+      const convertToSrt = (subtitles) => {
+        let srtContent = "";
+        let counter = 1;
+
+        subtitles.forEach((subtitle) => {
+          srtContent += `${counter}\n${subtitle.start} --> ${subtitle.end}\n${subtitle.text}\n\n`;
+          counter++;
+        });
+
+        return srtContent;
+      };
+
+      const srtContent = convertToSrt(subtitlesArray);
+      res.status(200).json({
+        message: "Subtitles Data is available",
+        subtitlesArray,
+        srtContent,
+      });
+    }
+  } catch (error) {
     res.status(500).json({ message: "Server side issue", error });
   }
 });
