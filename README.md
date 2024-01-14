@@ -49,5 +49,4 @@ Published Base Url - https://online-video-server.onrender.com
    4. cloudinary_access_token
 4. Note - Change .env based on your Db and Cloud storage
 
-Thanks & Regards
-   U.Harikaran
+
